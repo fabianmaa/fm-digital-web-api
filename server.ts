@@ -4,7 +4,7 @@ import cors from 'cors';
 
 const app = express();
 
-// Configura CORS para permitir solicitudes desde https://fmdigitalai.com
+// Configura CORS
 app.use(cors({
   origin: 'https://fmdigitalai.com',
   methods: ['GET', 'POST'],
@@ -13,34 +13,38 @@ app.use(cors({
 
 app.use(express.json());
 
-// Verificación de variables de entorno al inicio
+// Verificación de variables de entorno
 if (!process.env.NOTION_TOKEN || !process.env.NOTION_DATABASE_ID) {
   console.error('Error: Faltan variables de entorno NOTION_TOKEN o NOTION_DATABASE_ID.');
   process.exit(1);
 }
 
-// Inicialización con aserción no nula
 const notion = new Client({ auth: process.env.NOTION_TOKEN! });
 const databaseId = process.env.NOTION_DATABASE_ID!;
 
-// Endpoint para manejar envíos de formularios
 app.post('/submit-contact', async (req: Request, res: Response) => {
   const { name, email, phone = '', website = '', message = '' } = req.body;
 
-  // Validación básica de datos
+  // Validación básica
   if (!name || !email) {
     return res.status(400).json({ success: false, message: 'Name and email are required.' });
   }
 
   try {
-    console.log('Datos recibidos:', { name, email, phone, website, message }); // Depuración
+    console.log('Datos recibidos:', { name, email, phone, website, message });
     await notion.pages.create({
       parent: { database_id: databaseId },
       properties: {
-        Name: { title: [{ text: { content: name } }] },
+        Name: { 
+          title: [{ 
+            text: { 
+              content: name 
+            } 
+          }] 
+        },
         Email: { email: email },
-        Phone: { phone_number: phone || '' }, // Usar phone_number y mantener como cadena
-        Website: { url: website || 'https://default.com' }, // Valor por defecto válido
+        Phone: { phone_number: phone || null }, // Enviar como cadena o null
+        Website: { url: website || 'https://default.com' },
         Message: { rich_text: [{ text: { content: message } }] },
         'Registration Date': { date: { start: new Date().toISOString() } },
         Status: { select: { name: 'Pre-registered' } }
@@ -57,7 +61,6 @@ app.post('/submit-contact', async (req: Request, res: Response) => {
   }
 });
 
-// Iniciar el servidor
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
