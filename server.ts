@@ -1,15 +1,23 @@
 import express, { Request, Response } from 'express';
 import { Client } from '@notionhq/client';
-
-// Verificación de variables de entorno al inicio
-if (!process.env.NOTION_TOKEN || !process.env.NOTION_DATABASE_ID) {
-  console.error('Error: FRecords variables de entorno NOTION_TOKEN o NOTION_DATABASE_ID.');
-  process.exit(1);
-}
+import cors from 'cors';
 
 const app = express();
 
+// Configura CORS para permitir solicitudes desde https://fmdigitalai.com
+app.use(cors({
+  origin: 'https://fmdigitalai.com',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 app.use(express.json());
+
+// Verificación de variables de entorno al inicio
+if (!process.env.NOTION_TOKEN || !process.env.NOTION_DATABASE_ID) {
+  console.error('Error: Faltan variables de entorno NOTION_TOKEN o NOTION_DATABASE_ID.');
+  process.exit(1);
+}
 
 // Inicialización con aserción no nula
 const notion = new Client({ auth: process.env.NOTION_TOKEN! });
@@ -17,7 +25,6 @@ const databaseId = process.env.NOTION_DATABASE_ID!;
 
 // Endpoint para manejar envíos de formularios
 app.post('/submit-contact', async (req: Request, res: Response) => {
-  // Desestructuración con valores por defecto para campos opcionales
   const { name, email, phone = '', website = '', message = '' } = req.body;
 
   try {
@@ -26,8 +33,8 @@ app.post('/submit-contact', async (req: Request, res: Response) => {
       properties: {
         Name: { title: [{ text: { content: name } }] },
         Email: { email: email },
-        Phone: { rich_text: [{ text: { content: phone } }] },
-        Website: { url: website },
+        Phone: { number: phone ? parseInt(phone) : 0 }, // Convertir a número, usar 0 si está vacío
+        Website: { url: website || 'https://default.com' }, // Valor por defecto válido
         Message: { rich_text: [{ text: { content: message } }] },
         'Registration Date': { date: { start: new Date().toISOString() } },
         Status: { select: { name: 'Pre-registered' } }
@@ -41,7 +48,7 @@ app.post('/submit-contact', async (req: Request, res: Response) => {
 });
 
 // Iniciar el servidor
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
